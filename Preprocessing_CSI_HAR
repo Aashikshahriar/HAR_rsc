@@ -1,0 +1,224 @@
+"""
+data_preprocessing.py
+
+Utilities for loading and preprocessing the CSI-HAR dataset.
+Includes:
+- Window slicing
+- Gaussian noise augmentation
+- Dataset loading
+- Train/test split
+- PyTorch DataLoader preparation
+"""
+
+import os
+import numpy as np
+import pandas as pd
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+
+
+# =========================================
+# Activity Classes
+# =========================================
+ACTIVITIES = [
+    "bend",
+    "fall",
+    "lie down",
+    "run",
+    "sitdown",
+    "standup",
+    "walk"
+]
+
+
+# =========================================
+# Window Slicing
+# =========================================
+def window_slicing(sample, window_size=128, stride=32):
+    """
+    Slice a time-series sample into overlapping windows.
+
+    Args:
+        sample (numpy array): shape (timesteps, features)
+        window_size (int): window length
+        stride (int): sliding stride
+
+    Returns:
+        list of numpy arrays
+    """
+    slices = []
+
+    for start in range(0, sample.shape[0] - window_size + 1, stride):
+        slices.append(sample[start:start + window_size, :])
+
+    return slices
+
+
+# =========================================
+# Data Augmentation
+# =========================================
+def add_gaussian_noise(data, std=0.02):
+    """
+    Add Gaussian noise for data augmentation.
+    """
+    noise = np.random.normal(0.0, std, data.shape)
+    return data + noise
+
+
+# =========================================
+# Load Dataset
+# =========================================
+def load_dataset(base_path, window_size=128, stride=32, augment=True):
+    """
+    Load CSI-HAR dataset and perform preprocessing.
+
+    Args:
+        base_path (str): dataset directory
+        window_size (int): window length
+        stride (int): stride for sliding window
+        augment (bool): apply noise augmentation
+
+    Returns:
+        X (numpy array)
+        y (numpy array)
+        label_encoder
+    """
+
+    min_rows = None
+    num_cols = None
+
+    data_list = []
+    labels_list = []
+
+    # -----------------------------
+    # Find minimum sequence length
+    # -----------------------------
+    for act in ACTIVITIES:
+        activity_path = os.path.join(base_path, act)
+
+        files = [f for f in os.listdir(activity_path) if f.endswith("_A.csv")]
+
+        for f in files:
+            df = pd.read_csv(os.path.join(activity_path, f), header=None)
+
+            if min_rows is None:
+                min_rows = df.shape[0]
+            else:
+                min_rows = min(min_rows, df.shape[0])
+
+            num_cols = df.shape[1]
+
+    # -----------------------------
+    # Load and preprocess data
+    # -----------------------------
+    for act in ACTIVITIES:
+
+        activity_path = os.path.join(base_path, act)
+        files = [f for f in os.listdir(activity_path) if f.endswith("_A.csv")]
+
+        for f in files:
+
+            df = pd.read_csv(os.path.join(activity_path, f), header=None)
+
+            # Truncate to equal length
+            df = df.iloc[:min_rows]
+
+            # Normalize
+            df = (df - df.mean()) / (df.std() + 1e-6)
+
+            # Window slicing
+            for slice_ in window_slicing(df.values, window_size, stride):
+
+                data_list.append(slice_)
+                labels_list.append(act)
+
+                if augment:
+                    data_list.append(add_gaussian_noise(slice_))
+                    labels_list.append(act)
+
+    X = np.stack(data_list)
+    y = np.array(labels_list)
+
+    # -----------------------------
+    # Encode labels
+    # -----------------------------
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+
+    return X, y, le, num_cols
+
+
+# =========================================
+# Train/Test Split
+# =========================================
+def split_dataset(X, y, test_size=0.2, random_state=42):
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=test_size,
+        stratify=y,
+        random_state=random_state
+    )
+
+    return X_train, X_test, y_train, y_test
+
+
+# =========================================
+# PyTorch DataLoaders
+# =========================================
+def create_dataloaders(X_train, X_test, y_train, y_test, batch_size=64):
+
+    train_ds = TensorDataset(
+        torch.tensor(X_train, dtype=torch.float32),
+        torch.tensor(y_train, dtype=torch.long)
+    )
+
+    test_ds = TensorDataset(
+        torch.tensor(X_test, dtype=torch.float32),
+        torch.tensor(y_test, dtype=torch.long)
+    )
+
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=2,
+        pin_memory=True
+    )
+
+    test_loader = DataLoader(
+        test_ds,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=2,
+        pin_memory=True
+    )
+
+    return train_loader, test_loader
+
+
+# =========================================
+# Example Usage
+# =========================================
+
+# from data_preprocessing import load_dataset, split_dataset, create_dataloaders
+#
+# # Dataset path
+# base_path = "/kaggle/input/csi-mdpi/CSI-HAR-Dataset"
+#
+# # Load dataset
+# X, y, le, num_cols = load_dataset(base_path)
+#
+# # Train-test split
+# X_train, X_test, y_train, y_test = split_dataset(X, y)
+#
+# # Create PyTorch DataLoaders
+# train_loader, val_loader = create_dataloaders(
+#     X_train,
+#     X_test,
+#     y_train,
+#     y_test
+# )
