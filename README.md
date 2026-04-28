@@ -32,3 +32,10 @@ The dataset can be found in the following links:
 
 The repository contains several modules that collectively implement the proposed CNN–Temporal Attention framework for CSI-based Human Activity Recognition (HAR). The model.py file defines the core architecture consisting of 1D convolutional layers for spatial feature extraction, a temporal attention module for capturing sequential dependencies, and fully connected layers for final activity classification. The train.py script manages the training pipeline, including loading the preprocessed datasets, optimizing the model parameters, and saving the best-performing model. The evaluate.py script is used to assess model performance on unseen test data and reports key evaluation metrics such as accuracy and classification statistics. To incorporate privacy guarantees, dp_experiment.py implements Differential Privacy training using the Opacus framework, enabling ε-based privacy budget experiments and analysis of the privacy–utility trade-off. Additionally, accvssample.py evaluates sample efficiency by analyzing recognition accuracy with varying training sample sizes. The repository also includes dataset-specific preprocessing scripts such as Preprocessing_CSI_HAR, preprocessing_code_CSLOS.py, distance_preprocessing.py, and height_preprocessing.py, which prepare CSI signals through normalization, segmentation, and window slicing for different experimental conditions. Finally, model_cnn_attention.pdf presents the architectural diagram of the proposed CNN–Temporal Attention model used in this research.
 
+## Installation
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+
