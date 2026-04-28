@@ -32,14 +32,6 @@ The dataset can be found in the following links:
 
 The repository contains several modules that collectively implement the proposed CNN–Temporal Attention framework for CSI-based Human Activity Recognition (HAR). The model.py file defines the core architecture consisting of 1D convolutional layers for spatial feature extraction, a temporal attention module for capturing sequential dependencies, and fully connected layers for final activity classification. The train.py script manages the training pipeline, including loading the preprocessed datasets, optimizing the model parameters, and saving the best-performing model. The evaluate.py script is used to assess model performance on unseen test data and reports key evaluation metrics such as accuracy and classification statistics. To incorporate privacy guarantees, dp_experiment.py implements Differential Privacy training using the Opacus framework, enabling ε-based privacy budget experiments and analysis of the privacy–utility trade-off. Additionally, accvssample.py evaluates sample efficiency by analyzing recognition accuracy with varying training sample sizes. The repository also includes dataset-specific preprocessing scripts such as Preprocessing_CSI_HAR, preprocessing_code_CSLOS.py, distance_preprocessing.py, and height_preprocessing.py, which prepare CSI signals through normalization, segmentation, and window slicing for different experimental conditions. Finally, model_cnn_attention.pdf presents the architectural diagram of the proposed CNN–Temporal Attention model used in this research.
 
-## Installation
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-
-
 In addition to the provided preprocessing scripts for CSI-HAR, CSLOS, and WiAR datasets, this repository supports the use of custom or externally preprocessed datasets. This allows researchers to adapt the framework to new CSI datasets or other time-series sensing modalities.
 
 To use a custom dataset, the data must be converted into a standardized format compatible with the training pipeline. Specifically, the input features should be stored as a NumPy array X.npy with shape (N, T, C), where N represents the number of samples, T denotes the number of time steps, and C corresponds to the feature dimension (e.g., subcarriers or antenna channels). The labels should be stored as y.npy with shape (N,) and must be integer-encoded.
@@ -49,3 +41,13 @@ Before training, users should ensure that the data has undergone appropriate pre
 Once the dataset is prepared, users can integrate it into the pipeline by modifying the data loading step in the preprocessing module or directly within the training script. The model expects consistent input dimensions across all samples, and the same preprocessing procedure should be applied during both training and evaluation to ensure reliable results.
 
 This flexible design allows the framework to be extended beyond the included datasets, making it suitable for a wide range of applications such as indoor sensing, wearable signal analysis, or other privacy-sensitive time-series recognition tasks.
+
+If you find this repository useful, please ⭐ star it and cite the paper.
+## Installation
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+
+
