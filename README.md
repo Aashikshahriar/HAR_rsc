@@ -39,3 +39,13 @@ Install dependencies:
 ```bash
 pip install -r requirements.txt
 
+
+In addition to the provided preprocessing scripts for CSI-HAR, CSLOS, and WiAR datasets, this repository supports the use of custom or externally preprocessed datasets. This allows researchers to adapt the framework to new CSI datasets or other time-series sensing modalities.
+
+To use a custom dataset, the data must be converted into a standardized format compatible with the training pipeline. Specifically, the input features should be stored as a NumPy array X.npy with shape (N, T, C), where N represents the number of samples, T denotes the number of time steps, and C corresponds to the feature dimension (e.g., subcarriers or antenna channels). The labels should be stored as y.npy with shape (N,) and must be integer-encoded.
+
+Before training, users should ensure that the data has undergone appropriate preprocessing steps. These typically include normalization (such as per-sample z-score normalization), segmentation of continuous CSI streams into fixed-length windows, and label encoding. Optional augmentation techniques such as Gaussian noise injection, temporal jittering, or amplitude scaling may also be applied to improve model robustness.
+
+Once the dataset is prepared, users can integrate it into the pipeline by modifying the data loading step in the preprocessing module or directly within the training script. The model expects consistent input dimensions across all samples, and the same preprocessing procedure should be applied during both training and evaluation to ensure reliable results.
+
+This flexible design allows the framework to be extended beyond the included datasets, making it suitable for a wide range of applications such as indoor sensing, wearable signal analysis, or other privacy-sensitive time-series recognition tasks.
