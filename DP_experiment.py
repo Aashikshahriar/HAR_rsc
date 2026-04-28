@@ -1,164 +1,208 @@
+# install opacus if not already installed by !pip install opacus
 """
-dp_experiment.py
+train_dp.py
 
-Differential Privacy experiment using Opacus.
-
-Runs epsilon sweep experiments to evaluate
-accuracy vs privacy budget (ε).
+Training CNN + Temporal Attention with Differential Privacy (Opacus)
 """
 
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score
+
+from data_preprocessing import load_dataset, split_dataset, create_dataloaders
+from model import build_model
 
 from opacus import PrivacyEngine
 from opacus.validators import ModuleValidator
 
 
-# ==========================================
-# Differential Privacy Training
-# ==========================================
-def train_with_dp(
-    model_class,
-    train_dataset,
-    test_dataset,
-    input_dim,
-    num_classes,
-    epsilon,
-    device="cuda" if torch.cuda.is_available() else "cpu",
-    epochs=30,
-    batch_size=64,
-):
+def main():
 
-    # -----------------------------
+    # =========================================
+    # Path
+    # =========================================
+    base_path = r"D:\ CSI-HAR-Dataset\CSI-HAR-Dataset"
+
+    # =========================================
+    # Device
+    # =========================================
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Device:", device)
+
+    # =========================================
+    # Load Data
+    # =========================================
+    X, y, le, num_cols = load_dataset(base_path)
+
+    X_train, X_test, y_train, y_test = split_dataset(X, y)
+
+    train_loader, val_loader = create_dataloaders(
+        X_train, X_test, y_train, y_test,
+        batch_size=64
+    )
+
+    # =========================================
     # Model
-    # -----------------------------
-    model = model_class(input_dim, num_classes).to(device)
+    # =========================================
+    model = build_model(num_cols, len(np.unique(y)), device)
 
-    # Fix layers for DP compatibility
+    # 🔥 REQUIRED for Opacus
     model = ModuleValidator.fix(model)
+    model = model.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
-
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    # -----------------------------
-    # Privacy Engine
-    # -----------------------------
+    # =========================================
+    # Differential Privacy Setup
+    # =========================================
     privacy_engine = PrivacyEngine()
 
     model, optimizer, train_loader = privacy_engine.make_private_with_epsilon(
         module=model,
         optimizer=optimizer,
         data_loader=train_loader,
-        target_epsilon=epsilon,
+        target_epsilon=12,        # 🔥 adjust privacy level
         target_delta=1e-5,
-        epochs=epochs, #update epoch number for longer training
-        max_grad_norm=1.0
+        epochs=60,
+        max_grad_norm=1.0          # 🔥 adjust gradient clipping
     )
 
-    # -----------------------------
-    # Training
-    # -----------------------------
-    for _ in range(epochs):
+    print("🔐 Differential Privacy Enabled")
+
+    # =========================================
+    # Training Loop
+    # =========================================
+    best_acc = 0
+
+    for epoch in range(60):   #🔥 adjust epoch number for longer training
 
         model.train()
 
         for xb, yb in train_loader:
-
-            xb = xb.to(device)
-            yb = yb.to(device)
+            xb, yb = xb.to(device), yb.to(device)
 
             optimizer.zero_grad()
-
             loss = criterion(model(xb), yb)
 
             loss.backward()
-
             optimizer.step()
 
-    # -----------------------------
-    # Evaluation
-    # -----------------------------
-    model.eval()
+        # ==========================
+        # Validation
+        # ==========================
+        model.eval()
+        preds, labs = [], []
 
-    preds = []
-    labs = []
+        with torch.no_grad():
+            for xb, yb in val_loader:
+                xb = xb.to(device)
+                out = model(xb)
 
-    with torch.no_grad():
+                preds.extend(out.argmax(1).cpu().numpy())
+                labs.extend(yb.numpy())
 
-        for xb, yb in test_loader:
+        acc = accuracy_score(labs, preds)
 
-            xb = xb.to(device)
+        # 🔐 Get privacy budget spent
+        epsilon = privacy_engine.get_epsilon(delta=1e-5)
 
-            outputs = model(xb)
+        print(f"Epoch {epoch+1:02d} | Acc: {acc:.4f} | ε: {epsilon:.2f}")
 
-            preds.extend(outputs.argmax(1).cpu().numpy())
+        if acc > best_acc:
+            best_acc = acc
+            torch.save(model.state_dict(), "best_dp_model.pth")
 
-            labs.extend(yb.numpy())
-
-    acc = accuracy_score(labs, preds)
-
-    return acc
-
-
-# ==========================================
-# Epsilon Sweep Experiment
-# ==========================================
-def run_dp_experiment(
-    model_class,
-    train_dataset,
-    test_dataset,
-    input_dim,
-    num_classes,
-    epsilons=(2, 4, 6, 8, 10, 12, 14), #update epsilon values for more privacy budgets
-    device="cuda" if torch.cuda.is_available() else "cpu",
-):
-
-    results = {}
-
-    for eps in epsilons:
-
-        acc = train_with_dp(
-            model_class,
-            train_dataset,
-            test_dataset,
-            input_dim,
-            num_classes,
-            epsilon=eps,
-            device=device
-        )
-
-        results[eps] = acc
-
-        print(f"ε = {eps:>2} | Accuracy = {acc:.4f}")
-
-    print("\n🔐 Differential Privacy Results")
-
-    for k, v in results.items():
-
-        print(f"Epsilon {k:>2}: Accuracy {v:.4f}")
-
-    return results
+    print(f"\n✅ Best DP Accuracy: {best_acc:.4f}")
 
 
-# ==========================================
-# Example Usage
-# ==========================================
+# =========================================
+# ENTRY POINT
+# =========================================
+if __name__ == "__main__":
+    main()
 
-# from dp_experiment import run_dp_experiment
-# from model import CNNAttention
-#
-# results = run_dp_experiment(
-#     model_class=CNNAttention,
-#     train_dataset=train_ds,
-#     test_dataset=test_ds,
-#     input_dim=num_cols,
-#     num_classes=len(np.unique(y))
-# )
+
+
+
+
+
+"""
+==================== EXTENSIONS & USER OPTIONS ====================
+
+This script implements CNN + Temporal Attention with Differential Privacy (Opacus).
+
+Users can extend or modify this implementation in several ways:
+
+---------------------------
+🔐 Differential Privacy
+---------------------------
+- Tune epsilon (privacy level):
+    Lower epsilon → stronger privacy, lower accuracy
+    Higher epsilon → weaker privacy, better accuracy
+
+- Adjust max_grad_norm:
+    Controls gradient clipping strength
+
+- Modify delta:
+    Typically set as 1 / dataset size
+
+- Perform epsilon sweep:
+    Try multiple epsilon values (e.g., 2, 4, 6, 8, 10)
+    and compare accuracy vs privacy trade-off
+
+---------------------------
+📊 Evaluation Improvements
+---------------------------
+- Add confusion matrix visualization
+- Compute per-class accuracy
+- Track precision, recall, F1-score separately
+- Plot ROC curves (multi-class)
+- Add Top-K accuracy evaluation
+
+---------------------------
+📈 Visualization
+---------------------------
+- Plot training/validation accuracy curves
+- Plot loss curves
+- Plot epsilon vs accuracy graph (privacy trade-off)
+
+---------------------------
+⚙️ Model Improvements
+---------------------------
+- Replace attention with Transformer encoder
+- Add deeper CNN layers or residual connections
+- Use multi-scale convolutions
+- Experiment with different dropout rates
+
+---------------------------
+🧪 Data Improvements
+---------------------------
+- Apply more augmentation (noise, scaling, shifting)
+- Balance dataset if classes are imbalanced
+- Try different window sizes and strides
+
+---------------------------
+🚀 Performance Optimization
+---------------------------
+- Increase batch size (if memory allows)
+- Use mixed precision training (FP16)
+- Optimize DataLoader settings
+
+---------------------------
+📦 Deployment / Research
+---------------------------
+- Export model for inference (TorchScript / ONNX)
+- Measure inference latency
+- Compare DP vs non-DP model performance
+- Use cross-validation for robust evaluation
+
+------------------------------------------------------------------
+
+This code serves as a strong baseline for:
+- Privacy-preserving Human Activity Recognition (HAR)
+- Research and experimentation with DP-SGD (Opacus)
+
+==================================================================
+"""
