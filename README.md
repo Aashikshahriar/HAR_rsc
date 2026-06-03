@@ -8,11 +8,24 @@ This repository contains the implementation and experimental pipeline supporting
 
 The work focuses on WiFi Channel State Information (CSI)-based Human Activity Recognition (HAR) and introduces a privacy-preserving deep learning framework that integrates Convolutional Neural Networks (CNN) with a Temporal Attention mechanism, while incorporating Differential Privacy (DP) to protect sensitive behavioral patterns.
 
+If you find this repository or research useful for your work, please star ⭐ the repository and cite the paper using the following format:
+
+@Article{D6DD00077K,
+  author    = "Shahriar, Khondakar Ashik and Ahmed, Maruf and Imtiaz, Hafiz",
+  title     = "Lightweight privacy-preserving human activity recognition from CSI data using a CNN-temporal attention network",
+  journal   = "Digital Discovery",
+  year      = "2026",
+  pages     = "-",
+  publisher = "RSC",
+  doi       = "10.1039/D6DD00077K",
+  url       = "[http://dx.doi.org/10.1039/D6DD00077K](http://dx.doi.org/10.1039/D6DD00077K)"
+}
+
 Research Objective
 
 The primary objectives of this research are:
 
-Develop a lightweight deep learning architecture capable of accurately recognizing human activities using WiFi CSI signals.
+Develop a lightweight deep learning architecture that accurately recognizes human activities using WiFi CSI signals.
 
 Integrate temporal attention mechanisms to capture temporal dependencies in CSI signals and improve recognition performance.
 
@@ -24,7 +37,7 @@ Validate the framework across multiple CSI datasets under varying environmental 
 
 The repository includes training pipelines, preprocessing modules, differential privacy experiments, and evaluation scripts used in the study.
 
-This repository contains the codes and data supporting the research "Lightweight Privacy-Preserving Human Activity Recognition from CSI Data using CNN-Temporal Attention Network". This project contains work on three publicly available dataset CSI-HAR, CSLOS and Wi-AR. Differential Privacy is incorporated for making it privacy aware detection.
+This repository contains the code and data supporting the research "Lightweight Privacy-Preserving Human Activity Recognition from CSI Data using CNN-Temporal Attention Network". This project contains work on three publicly available dataset CSI-HAR, CSLOS and Wi-AR. Differential Privacy is incorporated to enable privacy-aware detection.
 The dataset can be found in the following links: 
 1. CSI-HAR Dataset: https://github.com/parisafm/CSI-HAR-Dataset
 2. CSLOS Dataset: https://data.mendeley.com/datasets/v38wjmz6f6/1
